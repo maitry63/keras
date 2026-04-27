@@ -3708,7 +3708,7 @@ def pad(x, pad_width, mode="constant", constant_values=None):
             constant_values, x.get_element_type()
         ).output(0)
 
-    # Split pad_width into two tensors pads_begin and pads_end.
+    # Split pad_width into two tensors pads_begin and pads_end
     pads_begin = []
     pads_end = []
     for pads_pair in pad_width:
