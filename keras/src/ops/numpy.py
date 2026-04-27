@@ -6481,9 +6481,8 @@ class Pad(Operation):
 
         pad_width = self.pad_width
         x_rank = len(x.shape)
-        if len(pad_width) == 1:
-            if x_rank > 1:
-                pad_width = pad_width * x_rank
+        if len(pad_width) == 1 and x_rank > 1:
+            pad_width = pad_width * x_rank
 
         if len(pad_width) != x_rank:
             raise ValueError(

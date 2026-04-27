@@ -1587,18 +1587,10 @@ def expm1(x):
 
 
 def flip(x, axis=None):
+    x = convert_to_tensor(x)
     if axis is None:
-        axis = list(range(len(x.shape)))
-    if not isinstance(axis, (list, tuple)):
-        axis = [axis]
-    return tf.reverse(x, axis)
-
-
-# def flip(x, axis=None):
-#     x = convert_to_tensor(x)
-#     if axis is None:
-#         return tf.reverse(x, tf.range(tf.rank(x)))
-#     return tf.reverse(x, [axis])
+        return tf.reverse(x, tf.range(tf.rank(x)))
+    return tf.reverse(x, [axis])
 
 
 def fliplr(x):
@@ -2560,10 +2552,7 @@ def pad(x, pad_width, mode="constant", constant_values=None):
             )
         kwargs["constant_values"] = constant_values
 
-    if len(pad_width) == 1 and len(x.shape) > 1:
-        pad_width = list(pad_width) * len(x.shape)
-
-    pad_width = convert_to_tensor(pad_width, dtype="int32")
+    pad_width = convert_to_tensor(pad_width, "int32")
     return tf.pad(x, pad_width, mode.upper(), **kwargs)
 
 

@@ -3709,8 +3709,6 @@ def pad(x, pad_width, mode="constant", constant_values=None):
         ).output(0)
 
     # Split pad_width into two tensors pads_begin and pads_end.
-    # pad_width is now already broadcasted by the agnostic
-    # layer to match x.ndim.
     pads_begin = []
     pads_end = []
     for pads_pair in pad_width:
