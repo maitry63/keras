@@ -1628,8 +1628,10 @@ def slogdet(x):
 
 def argpartition(x, kth, axis=-1):
     if axis is None:
-        axis = 0
-    return jnp.argpartition(x, kth, axis)
+        x = jnp.reshape(x, (-1,))
+        return jnp.argpartition(x, kth, axis=0)
+
+    return jnp.argpartition(x, kth, axis=axis)
 
 
 def histogram(x, bins=10, range=None):

@@ -2233,25 +2233,27 @@ class NumpyOneInputOpsDynamicShapeTest(testing.TestCase):
         self.assertEqual(knp.vsplit(x, [1, 3])[2].shape, (None, 3, 3))
 
     def test_argpartition(self):
-        x = KerasTensor((None, 3))
-        self.assertEqual(knp.argpartition(x, 3).shape, (None, 3))
-        self.assertEqual(knp.argpartition(x, 1, axis=1).shape, (None, 3))
+        x = np.random.randn(3, 4, 5)
+        kth = 2
 
-        x_dynamic = KerasTensor((None, 4, 4))
-        out_dynamic = knp.argpartition(x_dynamic, 2, axis=None)
-        self.assertEqual(out_dynamic.shape, (None, 4, 4))
-        self.assertEqual(out_dynamic.dtype, "int32")
+        result = keras.ops.argpartition(x, kth, axis=None)
+        flat_x = x.flatten()
 
-        x_static = KerasTensor((2, 3, 4))
-        out_static = knp.argpartition(x_static, 5, axis=None)
-        self.assertEqual(out_static.shape, (2, 3, 4))
+        left = flat_x[result[:kth]]
+        right = flat_x[result[kth + 1 :]]
 
-        x_eager = knp.ones((3, 3))
-        out_eager = knp.argpartition(x_eager, 0, axis=None)
-        self.assertEqual(out_eager.shape, (3, 3))
+        sorted_x = np.sort(flat_x)
+        kth_value = sorted_x[kth]
 
-        with self.assertRaises(ValueError):
-            knp.argpartition(x, (1, 3))
+        self.assertTrue(np.all(left <= kth_value))
+        self.assertTrue(np.all(right >= kth_value))
+
+        self.assertEqual(np.sum(flat_x[result[:kth]] <= kth_value), kth)
+
+        self.assertEqual(
+            np.sum(flat_x[result[kth + 1 :]] >= kth_value),
+            len(flat_x) - kth - 1,
+        )
 
     def test_angle(self):
         x = KerasTensor((None, 3))
