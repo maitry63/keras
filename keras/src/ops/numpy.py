@@ -6462,9 +6462,14 @@ class Pad(Operation):
         if isinstance(pad_width, int):
             return ((pad_width, pad_width),)
 
-        if isinstance(pad_width, (tuple, list)) and isinstance(
-            pad_width[0], int
+        if (
+            isinstance(pad_width, list)
+            and len(pad_width) == 1
+            and isinstance(pad_width[0], int)
         ):
+            return ((pad_width[0], pad_width[0]),)
+
+        if isinstance(pad_width, tuple) and isinstance(pad_width[0], int):
             return (pad_width,)
 
         first_len = len(pad_width[0])
@@ -6472,16 +6477,18 @@ class Pad(Operation):
         for i, pw in enumerate(pad_width):
             if len(pw) != first_len:
                 raise ValueError(
-                    "`pad_width` should be a list of tuples of length "
-                    f"1 or 2. Received: pad_width={pad_width}"
+                    "`pad_width` must be consistent tuples. "
+                    f"Received: {pad_width}"
                 )
             if len(pw) == 1:
                 pad_width[i] = (pw[0], pw[0])
 
+        pad_width = [tuple(pw) for pw in pad_width]
+
         return pad_width
 
     def call(self, x, constant_values=None):
-        pad_width = tuple(tuple(pw) for pw in self.pad_width)
+        pad_width = self.pad_width
         x_rank = len(x.shape)
 
         if len(pad_width) == 1 and x_rank > 1:
