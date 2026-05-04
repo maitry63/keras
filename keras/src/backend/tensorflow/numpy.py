@@ -3040,11 +3040,9 @@ def take_along_axis(x, indices, axis=None):
         # we rely on the broacast itself to fail in the incorrect case rather
         # than make some expensive dynamic checks here.
         broadcast_shape = [
-            (
-                tf.maximum(x_original_shape[i], indices_original_shape[i])
-                if dim is None
-                else dim
-            )
+            tf.maximum(x_original_shape[i], indices_original_shape[i])
+            if dim is None
+            else dim
             for i, dim in enumerate(broadcast_shape)
         ]
 
