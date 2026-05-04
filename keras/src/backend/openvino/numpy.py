@@ -66,9 +66,11 @@ def einsum(subscripts, *operands, **kwargs):
     else:
         ov_compute_type = ov_result_type
     inputs = [
-        ov_opset.convert(inp, ov_compute_type).output(0)
-        if inp.get_element_type() != ov_compute_type
-        else inp
+        (
+            ov_opset.convert(inp, ov_compute_type).output(0)
+            if inp.get_element_type() != ov_compute_type
+            else inp
+        )
         for inp in inputs
     ]
     result = ov_opset.einsum(inputs, subscripts).output(0)
@@ -1196,9 +1198,11 @@ def concatenate(xs, axis=0):
         target_type = dtypes.result_type(*keras_types)
         ov_target_type = OPENVINO_DTYPES[target_type]
         elems = [
-            ov_opset.convert(x, ov_target_type).output(0)
-            if x.get_element_type() != ov_target_type
-            else x
+            (
+                ov_opset.convert(x, ov_target_type).output(0)
+                if x.get_element_type() != ov_target_type
+                else x
+            )
             for x in elems
         ]
     res = ov_opset.concat(elems, axis).output(0)
@@ -5354,8 +5358,17 @@ def slogdet(x):
 
 def argpartition(x, kth, axis=-1):
     x = get_ov_output(x)
+    if axis is None:
+        x = ov_opset.reshape(
+            x,
+            ov_opset.constant([-1], dtype="int64"),
+            False,
+        )
+        axis = 0
+
     x_shape = x.get_partial_shape()
     rank = x_shape.rank.get_length()
+
     axis = canonicalize_axis(axis, rank)
     axes = list(range(rank))
     axes[axis], axes[-1] = axes[-1], axes[axis]
@@ -5366,6 +5379,7 @@ def argpartition(x, kth, axis=-1):
         ov_opset.constant(-1),
         ov_opset.constant(0),
     )
+
     if isinstance(kth, int) and kth < 0:
         kth_tensor = ov_opset.add(
             n,
@@ -5373,8 +5387,10 @@ def argpartition(x, kth, axis=-1):
         )
     else:
         kth_tensor = ov_opset.constant(kth, n.get_element_type())
+
     one = ov_opset.constant(1, kth_tensor.get_element_type())
     k_val = ov_opset.add(kth_tensor, one)
+
     bottom_ind = ov_opset.topk(
         ov_opset.negative(x),
         k=k_val,
@@ -5408,13 +5424,16 @@ def argpartition(x, kth, axis=-1):
         sort="value",
     ).output(1)
     result = ov_opset.concat([bottom_ind, top_ind], axis=-1)
+
     inv_axes = [0] * rank
     for i, a in enumerate(axes):
         inv_axes[a] = i
+
     result = ov_opset.transpose(
         result,
         ov_opset.constant(inv_axes),
     ).output(0)
+
     return OpenVINOKerasTensor(result)
 
 
