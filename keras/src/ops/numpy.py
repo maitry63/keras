@@ -6456,13 +6456,19 @@ class Pad(Operation):
         self.mode = mode
 
     def _process_pad_width(self, pad_width):
+        if pad_width == 0:
+            return ((0, 0),)
+
         if isinstance(pad_width, int):
             return ((pad_width, pad_width),)
+
         if isinstance(pad_width, (tuple, list)) and isinstance(
             pad_width[0], int
         ):
             return (pad_width,)
+
         first_len = len(pad_width[0])
+
         for i, pw in enumerate(pad_width):
             if len(pw) != first_len:
                 raise ValueError(
@@ -6471,16 +6477,13 @@ class Pad(Operation):
                 )
             if len(pw) == 1:
                 pad_width[i] = (pw[0], pw[0])
+
         return pad_width
 
     def call(self, x, constant_values=None):
-        if builtins.all(
-            [before == 0 and after == 0 for before, after in self.pad_width]
-        ):
-            return x
-
-        pad_width = self.pad_width
+        pad_width = tuple(tuple(pw) for pw in self.pad_width)
         x_rank = len(x.shape)
+
         if len(pad_width) == 1 and x_rank > 1:
             pad_width = pad_width * x_rank
 
@@ -6488,8 +6491,12 @@ class Pad(Operation):
             raise ValueError(
                 "`pad_width` must have the same length as `x.shape`. "
                 f"Received: pad_width={self.pad_width} "
-                f"and x.shape={x.shape}"
+                f"(of length {len(self.pad_width)}) and x.shape={x.shape} "
+                f"(of length {len(x.shape)})"
             )
+
+        if all([before == 0 and after == 0 for before, after in pad_width]):
+            return x
 
         return backend.numpy.pad(
             x,
