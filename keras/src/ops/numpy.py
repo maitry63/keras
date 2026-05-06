@@ -6474,22 +6474,26 @@ class Pad(Operation):
 
         first_len = len(pad_width[0])
 
-        for i, pw in enumerate(pad_width):
+        new_pad_width = []
+        for pw in pad_width:
             if len(pw) != first_len:
                 raise ValueError(
                     "`pad_width` must be consistent tuples. "
                     f"Received: {pad_width}"
                 )
             if len(pw) == 1:
-                pad_width[i] = (pw[0], pw[0])
+                new_pad_width.append((pw[0], pw[0]))
+            else:
+                new_pad_width.append(tuple(pw))
 
-        pad_width = [tuple(pw) for pw in pad_width]
-
-        return pad_width
+        return tuple(new_pad_width)
 
     def call(self, x, constant_values=None):
         pad_width = self.pad_width
         x_rank = len(x.shape)
+
+        if pad_width == ((0, 0),):
+            return x
 
         if len(pad_width) == 1 and x_rank > 1:
             pad_width = pad_width * x_rank
@@ -6502,7 +6506,13 @@ class Pad(Operation):
                 f"(of length {len(x.shape)})"
             )
 
-        if all([before == 0 and after == 0 for before, after in pad_width]):
+        is_all_zero = True
+        for before, after in pad_width:
+            if before != 0 or after != 0:
+                is_all_zero = False
+                break
+
+        if is_all_zero:
             return x
 
         return backend.numpy.pad(
