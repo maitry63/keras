@@ -5229,6 +5229,12 @@ class NumpyTwoInputOpsCorrectnessTest(testing.TestCase):
         )
 
 
+BACKEND_AGNOSTIC_OPS = [
+    {"testcase_name": "backend_specific", "backend_agnostic_ops": False},
+    {"testcase_name": "backend_agnostic", "backend_agnostic_ops": True},
+]
+
+
 class NumpyOneInputOpsCorrectnessTest(testing.TestCase):
     def test_mean(self):
         x = np.array([[1, 2, 3], [3, 2, 1]])
@@ -7114,111 +7120,125 @@ class NumpyOneInputOpsCorrectnessTest(testing.TestCase):
             np.split(x_np, indices_np, axis=1),
         )
 
-    def test_hsplit(self):
-        x = np.arange(18).reshape((3, 6))
+    @parameterized.named_parameters(named_product(BACKEND_AGNOSTIC_OPS))
+    def test_hsplit(self, backend_agnostic_ops):
+        backend.config._set_use_backend_agnostic_ops(backend_agnostic_ops)
+        try:
+            x = np.arange(18).reshape((3, 6))
 
-        self.assertIsInstance(knp.hsplit(x, 3), list)
+            self.assertIsInstance(knp.hsplit(x, 3), list)
 
-        for split_knp, split_np in zip(knp.hsplit(x, 3), np.hsplit(x, 3)):
-            self.assertAllClose(split_knp, split_np)
+            for split_knp, split_np in zip(knp.hsplit(x, 3), np.hsplit(x, 3)):
+                self.assertAllClose(split_knp, split_np)
 
-        for split_knp, split_np in zip(knp.Hsplit(3)(x), np.hsplit(x, 3)):
-            self.assertAllClose(split_knp, split_np)
+            for split_knp, split_np in zip(knp.Hsplit(3)(x), np.hsplit(x, 3)):
+                self.assertAllClose(split_knp, split_np)
 
-        indices = [1, 3, 5]
+            indices = [1, 3, 5]
 
-        # Compare each split
-        for split_knp, split_np in zip(
-            knp.hsplit(x, indices), np.hsplit(x, indices)
-        ):
-            self.assertAllClose(split_knp, split_np)
+            # Compare each split
+            for split_knp, split_np in zip(
+                knp.hsplit(x, indices), np.hsplit(x, indices)
+            ):
+                self.assertAllClose(split_knp, split_np)
 
-        for split_knp, split_np in zip(
-            knp.Hsplit(indices)(x), np.hsplit(x, indices)
-        ):
-            self.assertAllClose(split_knp, split_np)
+            for split_knp, split_np in zip(
+                knp.Hsplit(indices)(x), np.hsplit(x, indices)
+            ):
+                self.assertAllClose(split_knp, split_np)
 
-        with self.assertRaises(Exception):
-            knp.hsplit(x, 4)
+            with self.assertRaises(Exception):
+                knp.hsplit(x, 4)
 
-        x_kr = knp.array(x)
-        indices_kr = knp.array(indices)
-        indices_np = np.array(indices)
+            x_kr = knp.array(x)
+            indices_kr = knp.array(indices)
+            indices_np = np.array(indices)
 
-        for split_knp, split_np in zip(
-            knp.hsplit(x_kr, indices_kr), np.hsplit(x, indices_np)
-        ):
-            self.assertAllClose(split_knp, split_np)
+            for split_knp, split_np in zip(
+                knp.hsplit(x_kr, indices_kr), np.hsplit(x, indices_np)
+            ):
+                self.assertAllClose(split_knp, split_np)
 
-        # Test 1D case
-        x_1d = np.arange(10)
-        indices_1d = [2, 5, 9]
+            # Test 1D case
+            x_1d = np.arange(10)
+            indices_1d = [2, 5, 9]
 
-        self.assertIsInstance(knp.hsplit(x_1d, 2), list)
+            self.assertIsInstance(knp.hsplit(x_1d, 2), list)
 
-        for split_knp, split_np in zip(knp.hsplit(x_1d, 2), np.hsplit(x_1d, 2)):
-            self.assertAllClose(split_knp, split_np)
+            for split_knp, split_np in zip(
+                knp.hsplit(x_1d, 2), np.hsplit(x_1d, 2)
+            ):
+                self.assertAllClose(split_knp, split_np)
 
-        for split_knp, split_np in zip(knp.Hsplit(2)(x_1d), np.hsplit(x_1d, 2)):
-            self.assertAllClose(split_knp, split_np)
+            for split_knp, split_np in zip(
+                knp.Hsplit(2)(x_1d), np.hsplit(x_1d, 2)
+            ):
+                self.assertAllClose(split_knp, split_np)
 
-        for split_knp, split_np in zip(
-            knp.hsplit(x_1d, indices_1d), np.hsplit(x_1d, indices_1d)
-        ):
-            self.assertAllClose(split_knp, split_np)
+            for split_knp, split_np in zip(
+                knp.hsplit(x_1d, indices_1d), np.hsplit(x_1d, indices_1d)
+            ):
+                self.assertAllClose(split_knp, split_np)
 
-        for split_knp, split_np in zip(
-            knp.Hsplit(indices_1d)(x_1d), np.hsplit(x_1d, indices_1d)
-        ):
-            self.assertAllClose(split_knp, split_np)
+            for split_knp, split_np in zip(
+                knp.Hsplit(indices_1d)(x_1d), np.hsplit(x_1d, indices_1d)
+            ):
+                self.assertAllClose(split_knp, split_np)
 
-        with self.assertRaises(Exception):
-            knp.hsplit(x_1d, 3)
+            with self.assertRaises(Exception):
+                knp.hsplit(x_1d, 3)
 
-        x_kr = knp.array(x_1d)
-        indices_kr = knp.array(indices_1d)
-        indices_np = np.array(indices_1d)
+            x_kr = knp.array(x_1d)
+            indices_kr = knp.array(indices_1d)
+            indices_np = np.array(indices_1d)
 
-        for split_knp, split_np in zip(
-            knp.hsplit(x_kr, indices_kr), np.hsplit(x_1d, indices_np)
-        ):
-            self.assertAllClose(split_knp, split_np)
+            for split_knp, split_np in zip(
+                knp.hsplit(x_kr, indices_kr), np.hsplit(x_1d, indices_np)
+            ):
+                self.assertAllClose(split_knp, split_np)
+        finally:
+            backend.config._set_use_backend_agnostic_ops(False)
 
-    def test_vsplit(self):
-        x = np.arange(18).reshape((6, 3))
+    @parameterized.named_parameters(named_product(BACKEND_AGNOSTIC_OPS))
+    def test_vsplit(self, backend_agnostic_ops):
+        backend.config._set_use_backend_agnostic_ops(backend_agnostic_ops)
+        try:
+            x = np.arange(18).reshape((6, 3))
 
-        self.assertIsInstance(knp.vsplit(x, 3), list)
+            self.assertIsInstance(knp.vsplit(x, 3), list)
 
-        for split_knp, split_np in zip(knp.vsplit(x, 3), np.vsplit(x, 3)):
-            self.assertAllClose(split_knp, split_np)
+            for split_knp, split_np in zip(knp.vsplit(x, 3), np.vsplit(x, 3)):
+                self.assertAllClose(split_knp, split_np)
 
-        for split_knp, split_np in zip(knp.Vsplit(3)(x), np.vsplit(x, 3)):
-            self.assertAllClose(split_knp, split_np)
+            for split_knp, split_np in zip(knp.Vsplit(3)(x), np.vsplit(x, 3)):
+                self.assertAllClose(split_knp, split_np)
 
-        indices = [1, 3, 5]
+            indices = [1, 3, 5]
 
-        # Compare each split
-        for split_knp, split_np in zip(
-            knp.vsplit(x, indices), np.vsplit(x, indices)
-        ):
-            self.assertAllClose(split_knp, split_np)
+            # Compare each split
+            for split_knp, split_np in zip(
+                knp.vsplit(x, indices), np.vsplit(x, indices)
+            ):
+                self.assertAllClose(split_knp, split_np)
 
-        for split_knp, split_np in zip(
-            knp.Vsplit(indices)(x), np.vsplit(x, indices)
-        ):
-            self.assertAllClose(split_knp, split_np)
+            for split_knp, split_np in zip(
+                knp.Vsplit(indices)(x), np.vsplit(x, indices)
+            ):
+                self.assertAllClose(split_knp, split_np)
 
-        with self.assertRaises(Exception):
-            knp.vsplit(x, 4)
+            with self.assertRaises(Exception):
+                knp.vsplit(x, 4)
 
-        x_kr = knp.array(x)
-        indices_kr = knp.array(indices)
-        indices_np = np.array(indices)
+            x_kr = knp.array(x)
+            indices_kr = knp.array(indices)
+            indices_np = np.array(indices)
 
-        for split_knp, split_np in zip(
-            knp.vsplit(x_kr, indices_kr), np.vsplit(x, indices_np)
-        ):
-            self.assertAllClose(split_knp, split_np)
+            for split_knp, split_np in zip(
+                knp.vsplit(x_kr, indices_kr), np.vsplit(x, indices_np)
+            ):
+                self.assertAllClose(split_knp, split_np)
+        finally:
+            backend.config._set_use_backend_agnostic_ops(False)
 
     def test_dsplit(self):
         x = np.arange(24).reshape((2, 2, 6))
@@ -12330,55 +12350,67 @@ class NumpyDtypeTest(testing.TestCase):
             expected_dtype,
         )
 
-    @parameterized.named_parameters(named_product(dtype=ALL_DTYPES))
-    def test_hsplit(self, dtype):
+    @parameterized.named_parameters(
+        named_product(BACKEND_AGNOSTIC_OPS, dtype=ALL_DTYPES)
+    )
+    def test_hsplit(self, backend_agnostic_ops, dtype):
         import jax.numpy as jnp
 
-        x = knp.ones((2, 1), dtype=dtype)
-        x_jax = jnp.ones((2, 1), dtype=dtype)
-        expected_dtype = standardize_dtype(jnp.hsplit(x_jax, [1])[0].dtype)
+        backend.config._set_use_backend_agnostic_ops(backend_agnostic_ops)
+        try:
+            x = knp.ones((2, 1), dtype=dtype)
+            x_jax = jnp.ones((2, 1), dtype=dtype)
+            expected_dtype = standardize_dtype(jnp.hsplit(x_jax, [1])[0].dtype)
 
-        self.assertEqual(
-            standardize_dtype(knp.hsplit(x, [1])[0].dtype),
-            expected_dtype,
-        )
-        self.assertEqual(
-            standardize_dtype(knp.Hsplit([1]).symbolic_call(x)[0].dtype),
-            expected_dtype,
-        )
+            self.assertEqual(
+                standardize_dtype(knp.hsplit(x, [1])[0].dtype),
+                expected_dtype,
+            )
+            self.assertEqual(
+                standardize_dtype(knp.Hsplit([1]).symbolic_call(x)[0].dtype),
+                expected_dtype,
+            )
 
-        # test 1d case
-        x_1d = knp.ones((4,), dtype=dtype)
-        x_1d_jax = jnp.ones((4,), dtype=dtype)
-        expected_dtype_1d = standardize_dtype(
-            jnp.hsplit(x_1d_jax, [2])[0].dtype
-        )
+            # test 1d case
+            x_1d = knp.ones((4,), dtype=dtype)
+            x_1d_jax = jnp.ones((4,), dtype=dtype)
+            expected_dtype_1d = standardize_dtype(
+                jnp.hsplit(x_1d_jax, [2])[0].dtype
+            )
 
-        self.assertEqual(
-            standardize_dtype(knp.hsplit(x_1d, [2])[0].dtype),
-            expected_dtype_1d,
-        )
-        self.assertEqual(
-            standardize_dtype(knp.Hsplit([2]).symbolic_call(x_1d)[0].dtype),
-            expected_dtype_1d,
-        )
+            self.assertEqual(
+                standardize_dtype(knp.hsplit(x_1d, [2])[0].dtype),
+                expected_dtype_1d,
+            )
+            self.assertEqual(
+                standardize_dtype(knp.Hsplit([2]).symbolic_call(x_1d)[0].dtype),
+                expected_dtype_1d,
+            )
+        finally:
+            backend.config._set_use_backend_agnostic_ops(False)
 
-    @parameterized.named_parameters(named_product(dtype=ALL_DTYPES))
-    def test_vsplit(self, dtype):
+    @parameterized.named_parameters(
+        named_product(BACKEND_AGNOSTIC_OPS, dtype=ALL_DTYPES)
+    )
+    def test_vsplit(self, backend_agnostic_ops, dtype):
         import jax.numpy as jnp
 
-        x = knp.ones((1, 2), dtype=dtype)
-        x_jax = jnp.ones((1, 2), dtype=dtype)
-        expected_dtype = standardize_dtype(jnp.vsplit(x_jax, [1])[0].dtype)
+        backend.config._set_use_backend_agnostic_ops(backend_agnostic_ops)
+        try:
+            x = knp.ones((1, 2), dtype=dtype)
+            x_jax = jnp.ones((1, 2), dtype=dtype)
+            expected_dtype = standardize_dtype(jnp.vsplit(x_jax, [1])[0].dtype)
 
-        self.assertEqual(
-            standardize_dtype(knp.vsplit(x, [1])[0].dtype),
-            expected_dtype,
-        )
-        self.assertEqual(
-            standardize_dtype(knp.Vsplit([1]).symbolic_call(x)[0].dtype),
-            expected_dtype,
-        )
+            self.assertEqual(
+                standardize_dtype(knp.vsplit(x, [1])[0].dtype),
+                expected_dtype,
+            )
+            self.assertEqual(
+                standardize_dtype(knp.Vsplit([1]).symbolic_call(x)[0].dtype),
+                expected_dtype,
+            )
+        finally:
+            backend.config._set_use_backend_agnostic_ops(False)
 
     @parameterized.named_parameters(named_product(dtype=ALL_DTYPES))
     def test_dsplit(self, dtype):
@@ -13139,3 +13171,27 @@ class TileTest(testing.TestCase):
         output = TileLayer()(inputs)
 
         self.assertEqual(output.shape, (None, 6, 2, 2))
+
+    def test_tile_with_symbolic_repeats(self):
+        # `repeats` mixes Python ints with a symbolic batch dim
+        # used to broadcast a class token across a dynamic batch.
+        class TileClsToken(keras.layers.Layer):
+            def build(self, input_shape):
+                self.token = self.add_weight(
+                    shape=(1, 1, 8), initializer="ones"
+                )
+
+            def call(self, x):
+                batch_size = ops.shape(x)[0]
+                token = knp.tile(self.token, (batch_size, 1, 1))
+                return knp.concatenate([token, x], axis=1)
+
+        x = np.zeros((2, 4, 8), dtype="float32")
+        expected = np.concatenate([np.ones((2, 1, 8), "float32"), x], axis=1)
+
+        self.assertAllClose(TileClsToken()(x), expected)
+
+        inputs = keras.Input(shape=(4, 8))
+        model = keras.Model(inputs, TileClsToken()(inputs))
+
+        self.assertAllClose(model.predict(x), expected)
