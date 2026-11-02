@@ -90,6 +90,14 @@ TORCH_DTYPES = {
     "complex128": torch.complex128,
 }
 
+# TODO: Remove the MPS dtype downcasts if PyTorch adds support for these
+# dtypes on MPS (Metal currently has no double-precision support, see
+# https://github.com/pytorch/pytorch/issues/79019).
+MPS_UNSUPPORTED_DTYPES = {
+    "float64": "float32",
+    "complex128": "complex64",
+}
+
 
 @contextlib.contextmanager
 def device_scope(device_name):
@@ -184,26 +192,19 @@ class KerasDTensorPromotionMode(torch.utils._python_dispatch.TorchDispatchMode):
 
 class Variable(KerasVariable):
     def _initialize_distributed(self, initializer):
+        from keras.src.backend.torch import distribution_lib
+        from keras.src.distribution.distribution_lib import TensorLayout
         from keras.src.distribution.distribution_lib import distribution
 
-        dist = distribution()
-        if dist is None:
-            return None
-
-        from keras.src.backend.torch import distribution_lib
-
-        if self._layout is None:
-            self._layout = dist.get_variable_layout(self)
+        if self._layout is None and distribution() is not None:
+            self._layout = distribution().get_variable_layout(self)
 
         if self._layout is None:
             return None
-
-        from keras.src.distribution.distribution_lib import TensorLayout
 
         if isinstance(self._layout, TensorLayout):
             if all(axis is None for axis in self._layout.axes):
                 return None
-            self._layout = self._layout.backend_layout
 
         if callable(initializer):
             value = initializer(self._shape, dtype=self._dtype)
@@ -218,8 +219,13 @@ class Variable(KerasVariable):
             value = value.detach()
 
         if isinstance(value, torch.Tensor):
-            if value.device.type != self._layout.device_mesh.device_type:
-                value = value.to(self._layout.device_mesh.device_type)
+            if isinstance(self._layout, TensorLayout):
+                backend_mesh = self._layout.device_mesh.backend_mesh
+            else:
+                backend_mesh = self._layout.device_mesh
+
+            if value.device.type != backend_mesh.device_type:
+                value = value.to(backend_mesh.device_type)
 
         dtensor = distribution_lib.distribute_tensor(value, self._layout)
 
@@ -355,16 +361,30 @@ def convert_to_tensor(x, dtype=None, sparse=None, ragged=None):
         raise ValueError("`sparse=True` is not supported with torch backend")
     if ragged:
         raise ValueError("`ragged=True` is not supported with torch backend")
+    inferred_dtype = dtype is None
     if isinstance(x, Variable) or is_tensor(x):
         if isinstance(x, Variable):
             x = x.value
         device = get_device()
         if x.is_meta:
-            x = torch.empty_like(x, device=device)
-        else:
+            if dtype is None and "mps" in str(device):
+                dtype = MPS_UNSUPPORTED_DTYPES.get(standardize_dtype(x.dtype))
+            x = torch.empty_like(
+                x,
+                dtype=None if dtype is None else to_torch_dtype(dtype),
+                device=device,
+            )
+        elif dtype is None and "mps" in str(device):
+            x_dtype = standardize_dtype(x.dtype)
+            fallback_dtype = MPS_UNSUPPORTED_DTYPES.get(x_dtype)
+            if fallback_dtype is not None:
+                x = x.to(device=device, dtype=to_torch_dtype(fallback_dtype))
+            else:
+                x = x.to(device)
+        elif dtype is None:
             x = x.to(device)
-        if dtype is not None:
-            x = x.to(to_torch_dtype(dtype))
+        else:
+            x = x.to(device=device, dtype=to_torch_dtype(dtype))
         return x
     if isinstance(x, (bool, int, float, complex)):
         if dtype is not None:
@@ -414,6 +434,8 @@ def convert_to_tensor(x, dtype=None, sparse=None, ragged=None):
         dtype = result_type(
             *[getattr(item, "dtype", type(item)) for item in tree.flatten(x)]
         )
+    if inferred_dtype and "mps" in str(get_device()):
+        dtype = MPS_UNSUPPORTED_DTYPES.get(standardize_dtype(dtype), dtype)
     dtype = to_torch_dtype(dtype)
     return torch.as_tensor(x, dtype=dtype, device=get_device())
 
